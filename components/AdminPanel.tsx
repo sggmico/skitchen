@@ -1,6 +1,8 @@
 
 import React, { useState } from 'react';
 import { Dish, CategoryConfig } from '../types';
+import * as db from '../lib/database';
+import AuthGuard from './AuthGuard';
 
 interface AdminPanelProps {
   dishes: Dish[];
@@ -20,7 +22,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
   const [searchQuery, setSearchQuery] = useState('');
 
   // --- Dish Handlers ---
-  const handleSaveDish = (e?: React.MouseEvent) => {
+  const handleSaveDish = async (e?: React.MouseEvent) => {
     e?.preventDefault();
     e?.stopPropagation();
 
@@ -29,73 +31,102 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
       return;
     }
 
-    if (editingDish.id) {
-      // Update
-      setDishes(dishes.map(d => d.id === editingDish.id ? { ...d, ...editingDish } as Dish : d));
-    } else {
-      // Create
-      const newDish: Dish = {
-        ...editingDish,
-        id: Date.now().toString(),
-        name: editingDish.name,
-        category: editingDish.category,
-        price: Number(editingDish.price) || 0,
-        imageUrl: editingDish.imageUrl || '',
-        description: editingDish.description || '',
-        spicyLevel: editingDish.spicyLevel || 0,
-        popular: editingDish.popular || false
-      } as Dish;
-      setDishes([...dishes, newDish]);
+    try {
+      if (editingDish.id) {
+        // Update
+        await db.updateDish(editingDish.id, editingDish);
+        setDishes(dishes.map(d => d.id === editingDish.id ? { ...d, ...editingDish } as Dish : d));
+      } else {
+        // Create
+        const newDish = await db.createDish({
+          name: editingDish.name,
+          category: editingDish.category,
+          price: Number(editingDish.price) || 0,
+          imageUrl: editingDish.imageUrl || '',
+          description: editingDish.description || '',
+          spicyLevel: editingDish.spicyLevel || 0,
+          popular: editingDish.popular || false
+        });
+        setDishes([...dishes, newDish]);
+      }
+      setEditingDish(null);
+    } catch (error: any) {
+      alert('保存失败: ' + error.message);
     }
-    setEditingDish(null);
   };
 
-  const handleDeleteDish = (id: string) => {
+  const handleDeleteDish = async (id: string) => {
     if (confirm('确定要删除这道菜吗？')) {
-      setDishes(dishes.filter(d => d.id !== id));
+      try {
+        await db.deleteDish(id);
+        setDishes(dishes.filter(d => d.id !== id));
+      } catch (error: any) {
+        alert('删除失败: ' + error.message);
+      }
     }
   };
 
   // --- Category Handlers ---
-  const handleAddCategory = () => {
+  const handleAddCategory = async () => {
     const name = prompt('请输入新分类名称：');
     if (name) {
-      setCategories([...categories, {
-        id: `cat_${Date.now()}`,
-        name,
-        isFront: false
-      }]);
+      try {
+        const newCategory = await db.createCategory({ name, isFront: false });
+        setCategories([...categories, newCategory]);
+      } catch (error: any) {
+        alert('创建分类失败: ' + error.message);
+      }
     }
   };
 
-  const handleDeleteCategory = (id: string) => {
+  const handleDeleteCategory = async (id: string) => {
     if (dishes.some(d => d.category === categories.find(c => c.id === id)?.name)) {
       alert('该分类下还有菜品，请先删除或移动菜品后再删除分类。');
       return;
     }
     if (confirm('确定删除此分类？')) {
-      setCategories(categories.filter(c => c.id !== id));
+      try {
+        await db.deleteCategory(id);
+        setCategories(categories.filter(c => c.id !== id));
+      } catch (error: any) {
+        alert('删除分类失败: ' + error.message);
+      }
     }
   };
 
-  const toggleCategoryPage = (id: string) => {
-    setCategories(categories.map(c => c.id === id ? { ...c, isFront: !c.isFront } : c));
+  const toggleCategoryPage = async (id: string) => {
+    const category = categories.find(c => c.id === id);
+    if (!category) return;
+
+    try {
+      await db.updateCategory(id, { isFront: !category.isFront });
+      setCategories(categories.map(c => c.id === id ? { ...c, isFront: !c.isFront } : c));
+    } catch (error: any) {
+      alert('更新分类失败: ' + error.message);
+    }
   };
-  
-  const moveCategory = (index: number, direction: 'up' | 'down') => {
+
+  const moveCategory = async (index: number, direction: 'up' | 'down') => {
     if (direction === 'up' && index === 0) return;
     if (direction === 'down' && index === categories.length - 1) return;
-    
+
     const newCats = [...categories];
     const targetIndex = direction === 'up' ? index - 1 : index + 1;
     [newCats[index], newCats[targetIndex]] = [newCats[targetIndex], newCats[index]];
-    setCategories(newCats);
+
+    try {
+      await db.reorderCategories(newCats);
+      setCategories(newCats);
+    } catch (error: any) {
+      alert('排序失败: ' + error.message);
+    }
   };
 
   const filteredDishes = dishes.filter(d => d.name.includes(searchQuery));
 
   return (
-    <div className="fixed inset-0 z-[60] bg-gray-100 overflow-y-auto">
+    <AuthGuard onClose={onClose}>
+      <div className="fixed inset-0 z-[60] bg-gray-100 overflow-y-auto">
       {/* Simplified Admin Header */}
       <div className="bg-baoding-dark text-white sticky top-0 shadow-md z-10">
         <div className="max-w-7xl mx-auto px-3 md:px-6 py-2 md:py-2.5">
@@ -376,6 +407,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
         )}
       </div>
     </div>
+    </AuthGuard>
   );
 };
 

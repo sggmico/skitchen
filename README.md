@@ -1,20 +1,153 @@
-<div align="center">
-<img width="1200" height="475" alt="GHBanner" src="https://github.com/user-attachments/assets/0aa67016-6eaf-458a-adb2-6e31a0763ed6" />
-</div>
+# SGG · 私房菜 菜单系统
 
-# Run and deploy your AI Studio app
+一个精美的中式餐厅菜单系统,支持商业版和家宴版两种展示模式,集成 Supabase 后端。
 
-This contains everything you need to run your app locally.
+## ✨ 功能特性
 
-View your app in AI Studio: https://ai.studio/apps/drive/1UFs50OU7ak-W8zpEGZMAU1jhGshaVswS
+- 🎨 **双模式展示**: 商业版(带价格)和家庭版(无价格)
+- 📱 **完全响应式**: 支持手机、平板、桌面设备
+- 🔐 **安全认证**: 管理后台需要登录,仅授权用户可编辑
+- 💾 **云端存储**: 数据存储在 Supabase,支持实时同步
+- 🖨️ **打印友好**: 支持 A4 纸张打印
+- 📄 **PDF 导出**: 可导出为 PDF 文件
 
-## Run Locally
+## 🚀 快速开始
 
-**Prerequisites:**  Node.js
+### 前提条件
 
+- Node.js 16+
+- Supabase 账号(免费)
 
-1. Install dependencies:
-   `npm install`
-2. Set the `GEMINI_API_KEY` in [.env.local](.env.local) to your Gemini API key
-3. Run the app:
-   `npm run dev`
+### 安装步骤
+
+1. **克隆项目**
+   ```bash
+   git clone <your-repo-url>
+   cd skitchen
+   ```
+
+2. **安装依赖**
+   ```bash
+   npm install
+   ```
+
+3. **配置 Supabase**
+
+   按照 [Supabase 文档](./docs/supabase/README.md) 的详细说明:
+   - 创建 Supabase 项目
+   - 创建数据库表
+   - 配置环境变量
+   - 创建管理员用户
+
+4. **启动开发服务器**
+   ```bash
+   npm run dev
+   ```
+
+5. **访问应用**
+
+   打开浏览器访问 `http://localhost:5173`
+
+## 📚 使用指南
+
+### 查看菜单
+
+- 访问首页即可查看菜单
+- 使用顶部切换按钮在"商业版"和"家庭版"之间切换
+- 商业版显示价格和详细信息
+- 家庭版只显示菜品名称和描述
+
+### 管理菜单
+
+1. 点击顶部"管理"按钮
+2. 使用管理员邮箱和密码登录
+3. 登录后可以:
+   - 添加/编辑/删除菜品
+   - 管理分类
+   - 调整分类顺序
+   - 设置招牌菜品
+   - 设置辣度等级
+
+### 打印和导出
+
+- **打印**: 点击"打印"按钮,使用浏览器打印功能
+- **PDF**: 点击"PDF"按钮,自动生成并下载 PDF 文件
+
+## 🏗️ 项目结构
+
+```
+skitchen/
+├── components/          # React 组件
+│   ├── AdminPanel.tsx   # 管理后台面板
+│   ├── AuthGuard.tsx    # 认证守卫
+│   └── DishCard.tsx     # 菜品卡片
+├── lib/                 # 工具库
+│   ├── supabase.ts      # Supabase 客户端配置
+│   └── database.ts      # 数据库操作
+├── supabase/           # Supabase 配置
+│   └── schema.sql      # 数据库架构
+├── App.tsx             # 主应用组件
+├── types.ts            # TypeScript 类型定义
+└── constants.ts        # 常量定义
+```
+
+## 🔧 技术栈
+
+- **前端框架**: React 19 + TypeScript
+- **构建工具**: Vite
+- **样式**: Tailwind CSS
+- **后端服务**: Supabase
+  - 数据库: PostgreSQL
+  - 认证: Supabase Auth
+  - 存储: Row Level Security (RLS)
+- **PDF 生成**: html2pdf.js
+
+## 🛡️ 安全性
+
+- ✅ Row Level Security (RLS) 确保数据访问安全
+- ✅ 仅认证用户可以编辑数据
+- ✅ 所有用户可以查看菜单(只读)
+- ✅ 环境变量保护敏感信息
+- ✅ 密码不会明文存储
+
+## 📖 文档
+
+详细文档请查看 [docs/supabase](./docs/supabase/README.md) 目录:
+
+1. [设置指南](./docs/supabase/001-setup-guide.md) - 详细的 Supabase 配置说明
+2. [检查清单](./docs/supabase/002-checklist.md) - 设置和部署检查清单
+3. [数据迁移](./docs/supabase/003-data-migration.md) - 如何迁移现有数据
+4. [实施总结](./docs/supabase/004-implementation-summary.md) - 技术实施详情
+
+## 🚢 部署
+
+### Vercel 部署
+
+1. Fork 本项目
+2. 在 Vercel 中导入项目
+3. 添加环境变量:
+   - `VITE_SUPABASE_URL`
+   - `VITE_SUPABASE_ANON_KEY`
+4. 点击部署
+
+### Netlify 部署
+
+1. Fork 本项目
+2. 在 Netlify 中导入项目
+3. 构建命令: `npm run build`
+4. 发布目录: `dist`
+5. 添加环境变量(同上)
+
+## 🤝 贡献
+
+欢迎提交 Issue 和 Pull Request!
+
+## 📝 License
+
+MIT
+
+## 🙏 致谢
+
+- [Supabase](https://supabase.com/) - 开源的 Firebase 替代方案
+- [Tailwind CSS](https://tailwindcss.com/) - 实用优先的 CSS 框架
+- [React](https://react.dev/) - 用于构建用户界面的 JavaScript 库

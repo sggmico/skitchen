@@ -1,0 +1,6 @@
+name,is_front,display_order
+热菜小炒,true,1
+爽口凉菜,true,2
+传统主食,false,3
+汤粥面食,false,4
+酒水饮料,false,5

@@ -4,6 +4,7 @@ import { MENU_ITEMS, DEFAULT_CATEGORIES } from './constants';
 import { Dish, CategoryConfig } from './types';
 import DishCard from './components/DishCard';
 import AdminPanel from './components/AdminPanel';
+import * as db from './lib/database';
 
 type ViewMode = 'business' | 'family';
 type PageMode = 'menu' | 'admin';
@@ -135,32 +136,42 @@ function App() {
   const [dishes, setDishes] = useState<Dish[]>([]);
   const [categories, setCategories] = useState<CategoryConfig[]>([]);
 
-  // Load Initial Data
+  // Load Initial Data from Supabase
   useEffect(() => {
-    const savedDishes = localStorage.getItem('sgg_menu_dishes');
-    const savedCats = localStorage.getItem('sgg_menu_cats');
+    const loadData = async () => {
+      try {
+        const [dishesData, categoriesData] = await Promise.all([
+          db.getDishes(),
+          db.getCategories()
+        ]);
 
-    if (savedDishes) {
-      setDishes(JSON.parse(savedDishes));
-    } else {
-      setDishes(MENU_ITEMS);
-    }
+        if (dishesData.length > 0) {
+          setDishes(dishesData);
+        } else {
+          // Fallback to localStorage or default data
+          const savedDishes = localStorage.getItem('sgg_menu_dishes');
+          setDishes(savedDishes ? JSON.parse(savedDishes) : MENU_ITEMS);
+        }
 
-    if (savedCats) {
-      setCategories(JSON.parse(savedCats));
-    } else {
-      setCategories(DEFAULT_CATEGORIES);
-    }
+        if (categoriesData.length > 0) {
+          setCategories(categoriesData);
+        } else {
+          // Fallback to localStorage or default data
+          const savedCats = localStorage.getItem('sgg_menu_cats');
+          setCategories(savedCats ? JSON.parse(savedCats) : DEFAULT_CATEGORIES);
+        }
+      } catch (error) {
+        console.error('Failed to load data from Supabase:', error);
+        // Fallback to localStorage
+        const savedDishes = localStorage.getItem('sgg_menu_dishes');
+        const savedCats = localStorage.getItem('sgg_menu_cats');
+        setDishes(savedDishes ? JSON.parse(savedDishes) : MENU_ITEMS);
+        setCategories(savedCats ? JSON.parse(savedCats) : DEFAULT_CATEGORIES);
+      }
+    };
+
+    loadData();
   }, []);
-
-  // Save Data Changes
-  useEffect(() => {
-    if (dishes.length > 0) localStorage.setItem('sgg_menu_dishes', JSON.stringify(dishes));
-  }, [dishes]);
-
-  useEffect(() => {
-    if (categories.length > 0) localStorage.setItem('sgg_menu_cats', JSON.stringify(categories));
-  }, [categories]);
 
 
   const handlePrint = () => {
