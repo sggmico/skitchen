@@ -1,9 +1,12 @@
 
 import React, { useState, useEffect } from 'react';
 import { MENU_ITEMS, DEFAULT_CATEGORIES } from './constants';
-import { Dish, CategoryConfig } from './types';
+import { Dish, CategoryConfig, CartItem } from './types';
 import DishCard from './components/DishCard';
 import AdminPanel from './components/AdminPanel';
+import CartSummary from './components/CartSummary';
+import MobileCartBar from './components/MobileCartBar';
+import OrderDetail from './components/OrderDetail';
 import * as db from './lib/database';
 
 type ViewMode = 'business' | 'family';
@@ -13,12 +16,20 @@ const MenuPage = ({
   categories,
   dishes,
   isFront,
-  viewMode
+  viewMode,
+  orderMode,
+  cart,
+  onAddToCart,
+  onUpdateQuantity
 }: {
   categories: CategoryConfig[],
   dishes: Dish[],
   isFront: boolean,
-  viewMode: ViewMode
+  viewMode: ViewMode,
+  orderMode?: boolean,
+  cart?: CartItem[],
+  onAddToCart?: (dish: Dish) => void,
+  onUpdateQuantity?: (dishId: string, quantity: number) => void
 }) => {
   // Grid Layout Logic
   // Business: 2 columns, wide gap
@@ -89,13 +100,20 @@ const MenuPage = ({
 
                 {/* Dynamic Grid */}
                 <div className={`grid ${gridClass} px-3 sm:px-4 lg:px-2`}>
-                  {catDishes.map(dish => (
-                    <DishCard
-                      key={dish.id}
-                      dish={dish}
-                      showPrice={viewMode === 'business'}
-                    />
-                  ))}
+                  {catDishes.map(dish => {
+                    const cartItem = cart?.find(item => item.id === dish.id);
+                    return (
+                      <DishCard
+                        key={dish.id}
+                        dish={dish}
+                        showPrice={viewMode === 'business'}
+                        orderMode={orderMode}
+                        quantity={cartItem?.quantity || 0}
+                        onAddToCart={onAddToCart}
+                        onUpdateQuantity={onUpdateQuantity}
+                      />
+                    );
+                  })}
                 </div>
               </section>
             );
@@ -122,6 +140,9 @@ function App() {
   const [isDownloading, setIsDownloading] = useState(false);
   const [viewMode, setViewMode] = useState<ViewMode>('family');
   const [pageMode, setPageMode] = useState<PageMode>('menu');
+  const [orderMode, setOrderMode] = useState(false);
+  const [cart, setCart] = useState<CartItem[]>([]);
+  const [showOrderDetail, setShowOrderDetail] = useState(false);
 
   // Set default view mode to family on first load
   useEffect(() => {
@@ -173,6 +194,35 @@ function App() {
     loadData();
   }, []);
 
+  // Cart Management Functions
+  const handleAddToCart = (dish: Dish) => {
+    const existingItem = cart.find(item => item.id === dish.id);
+    if (existingItem) {
+      setCart(cart.map(item =>
+        item.id === dish.id
+          ? { ...item, quantity: item.quantity + 1 }
+          : item
+      ));
+    } else {
+      setCart([...cart, { ...dish, quantity: 1 }]);
+    }
+  };
+
+  const handleUpdateQuantity = (dishId: string, quantity: number) => {
+    if (quantity === 0) {
+      setCart(cart.filter(item => item.id !== dishId));
+    } else {
+      setCart(cart.map(item =>
+        item.id === dishId
+          ? { ...item, quantity }
+          : item
+      ));
+    }
+  };
+
+  const handleRemoveItem = (dishId: string) => {
+    setCart(cart.filter(item => item.id !== dishId));
+  };
 
   const handlePrint = () => {
     window.focus();
@@ -278,6 +328,26 @@ function App() {
 
             {/* Right: Action Buttons */}
             <div className="flex items-center gap-2">
+              {/* Order Mode Toggle */}
+              <button
+                onClick={() => setOrderMode(!orderMode)}
+                className={`${
+                  orderMode
+                    ? 'bg-baoding-red text-white'
+                    : 'text-gray-500 hover:text-baoding-red'
+                } transition-colors p-1.5 md:p-2 rounded relative`}
+                title={orderMode ? "退出点菜" : "开始点菜"}
+              >
+                <svg className="w-4 h-4 md:w-5 md:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z" />
+                </svg>
+                {cart.length > 0 && (
+                  <span className="absolute -top-1 -right-1 bg-red-500 text-white text-[9px] font-bold rounded-full w-4 h-4 flex items-center justify-center">
+                    {cart.reduce((sum, item) => sum + item.quantity, 0)}
+                  </span>
+                )}
+              </button>
+
               <button
                 onClick={() => setPageMode('admin')}
                 className="text-gray-500 hover:text-baoding-red transition-colors p-1.5 md:p-2"
@@ -318,30 +388,80 @@ function App() {
       <div className="no-print h-[52px] md:h-[56px]"></div>
 
       {/* Preview Container with Responsive Layout */}
-      {/* Mobile: Full width, Desktop: A4 size */}
-      <div id="print-container-wrapper" className="w-full overflow-x-auto overflow-y-hidden pb-8 px-2 sm:px-4 flex justify-center items-start">
-        <div id="menu-content" className="flex flex-col gap-4 sm:gap-6 lg:gap-8 items-center w-full sm:min-w-[210mm] sm:w-auto">
-          {/* Page 1: Front */}
-          <MenuPage 
-            isFront={true} 
-            categories={frontCategories} 
-            dishes={dishes}
-            viewMode={viewMode}
-          />
+      {/* Mobile: Full width, Desktop: A4 size with optional cart sidebar */}
+      <div className="flex w-full">
+        {/* Main Menu Content */}
+        <div
+          id="print-container-wrapper"
+          className={`w-full overflow-x-auto overflow-y-hidden pb-8 px-2 sm:px-4 flex justify-center items-start transition-all ${
+            orderMode ? 'lg:mr-80' : ''
+          }`}
+        >
+          <div id="menu-content" className="flex flex-col gap-4 sm:gap-6 lg:gap-8 items-center w-full sm:min-w-[210mm] sm:w-auto">
+            {/* Page 1: Front */}
+            <MenuPage
+              isFront={true}
+              categories={frontCategories}
+              dishes={dishes}
+              viewMode={viewMode}
+              orderMode={orderMode}
+              cart={cart}
+              onAddToCart={handleAddToCart}
+              onUpdateQuantity={handleUpdateQuantity}
+            />
 
-          {/* Page 2: Back */}
-          <MenuPage 
-            isFront={false} 
-            categories={backCategories} 
-            dishes={dishes}
-            viewMode={viewMode}
-          />
+            {/* Page 2: Back */}
+            <MenuPage
+              isFront={false}
+              categories={backCategories}
+              dishes={dishes}
+              viewMode={viewMode}
+              orderMode={orderMode}
+              cart={cart}
+              onAddToCart={handleAddToCart}
+              onUpdateQuantity={handleUpdateQuantity}
+            />
+          </div>
         </div>
+
+        {/* Desktop Cart Sidebar */}
+        {orderMode && (
+          <div className="hidden lg:block fixed right-0 top-[56px] bottom-0 w-80 bg-white shadow-2xl border-l border-gray-200 z-40">
+            <CartSummary
+              items={cart}
+              onUpdateQuantity={handleUpdateQuantity}
+              onRemoveItem={handleRemoveItem}
+              onViewOrder={() => setShowOrderDetail(true)}
+            />
+          </div>
+        )}
       </div>
+
+      {/* Mobile Cart Bar */}
+      {orderMode && (
+        <MobileCartBar
+          items={cart}
+          onUpdateQuantity={handleUpdateQuantity}
+          onRemoveItem={handleRemoveItem}
+          onViewOrder={() => setShowOrderDetail(true)}
+        />
+      )}
+
+      {/* Order Detail Modal */}
+      {showOrderDetail && (
+        <OrderDetail
+          items={cart}
+          onClose={() => setShowOrderDetail(false)}
+          onPrint={() => {
+            window.print();
+            setShowOrderDetail(false);
+          }}
+        />
+      )}
 
       {/* Admin Modal Overlay */}
       {pageMode === 'admin' && (
-        <AdminPanel 
+        <AdminPanel
           dishes={dishes}
           setDishes={setDishes}
           categories={categories}

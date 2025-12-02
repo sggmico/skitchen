@@ -5,11 +5,36 @@ import { Dish } from '../types';
 interface DishCardProps {
   dish: Dish;
   showPrice?: boolean;
+  orderMode?: boolean;
+  quantity?: number;
+  onAddToCart?: (dish: Dish) => void;
+  onUpdateQuantity?: (dishId: string, quantity: number) => void;
 }
 
-const DishCard: React.FC<DishCardProps> = ({ dish, showPrice = true }) => {
+const DishCard: React.FC<DishCardProps> = ({
+  dish,
+  showPrice = true,
+  orderMode = false,
+  quantity = 0,
+  onAddToCart,
+  onUpdateQuantity
+}) => {
+  const handleAdd = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (onAddToCart) {
+      onAddToCart(dish);
+    }
+  };
+
+  const handleQuantityChange = (e: React.MouseEvent, delta: number) => {
+    e.stopPropagation();
+    if (onUpdateQuantity) {
+      onUpdateQuantity(dish.id, Math.max(0, quantity + delta));
+    }
+  };
+
   return (
-    <div className="flex flex-col justify-center py-1 sm:py-1.5 group w-full overflow-hidden">
+    <div className={`flex flex-col justify-center py-1 sm:py-1.5 group w-full overflow-hidden ${orderMode ? 'relative' : ''}`}>
       {/* Top Line: Name + Badge + Price */}
       <div className="flex items-baseline w-full">
 
@@ -48,6 +73,45 @@ const DishCard: React.FC<DishCardProps> = ({ dish, showPrice = true }) => {
           )}
         </p>
       </div>
+
+      {/* Order Mode Controls */}
+      {orderMode && (
+        <div className="mt-2 flex items-center justify-between">
+          {quantity === 0 ? (
+            <button
+              onClick={handleAdd}
+              className="flex items-center space-x-1 px-3 py-1.5 bg-baoding-red text-white rounded-md hover:bg-red-800 transition-colors text-xs font-medium"
+            >
+              <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+              </svg>
+              <span>加入</span>
+            </button>
+          ) : (
+            <div className="flex items-center space-x-2 bg-baoding-paper border border-baoding-gold/30 rounded-md p-1">
+              <button
+                onClick={(e) => handleQuantityChange(e, -1)}
+                className="w-6 h-6 rounded flex items-center justify-center hover:bg-white transition-colors text-baoding-red"
+              >
+                <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 12H4" />
+                </svg>
+              </button>
+              <span className="text-sm font-semibold text-baoding-dark min-w-[1.5rem] text-center">
+                {quantity}
+              </span>
+              <button
+                onClick={(e) => handleQuantityChange(e, 1)}
+                className="w-6 h-6 rounded flex items-center justify-center hover:bg-white transition-colors text-baoding-red"
+              >
+                <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                </svg>
+              </button>
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 };
